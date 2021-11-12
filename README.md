@@ -36,6 +36,7 @@ rates.csv
 		ID = colony ID
 
 for data-processing replication:
+	
 	Deposition_data-colonies_R54-R34-R29-R5.csv: raw building event data
 		Colony = colony ID
 		ROI = building site (numbered 1-3 in each colony)
@@ -61,8 +62,8 @@ for data-processing replication:
 		normalised time =  time of event (s) from first building event in colony
 
 	ROI_coordinates.xlsx
-	pixel coordinates of the centre of each ROI
-
+		pixel coordinates of the centre of each ROI
+		
 
 Chapter 4
 ind_var_sim.pyx
