@@ -1,5 +1,5 @@
 # PhD-thesis
-This repository contains the code files for the unpublished content of my PhD thesis.
+This repository contains the code and data files for the unpublished content of my PhD thesis.
 
 ## FILE LIST
 (Note on file extensions: `.py` and `.pyx` = python; `.R` and `.rmd` = R)
