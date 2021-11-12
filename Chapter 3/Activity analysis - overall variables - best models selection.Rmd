@@ -1,0 +1,499 @@
+---
+title: "Activity analysis - overall variables - best models selection"
+author: "Edith Invernizzi"
+date: "01/03/2021"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+<style>
+body {
+text-align: justify}
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Introduction
+
+This study aims at developing a methodology to statistically test the effect of potential predictors on ant building activity. The statistical study of ant activity time series is complicated by the effect of colony activity-level shifts on the pattern of activity. Here, we account for these shifts using hidden Markov models (HMM), a widely-used framework in animal movement ecology that identifies different behavioural states within a time series. The individual (or, for us, the colony) switches between states during the course of the recording and each state generates a different distribution of behavioural events: movement speed and direction in the case of movement ecology and nest building rates in our study.
+
+We experimentally record stone deposition rates occurring during nest wall building in *Temnothorax rugatulus* colonies. Four colonies were used for the study. *Temnothorax* nest building has been hypothesised to follow local cues (Franks & Deneubourg, 1997). Here, we study the effect of the variables that are thought to have an influence at a local level (*i.e.*, next to the site of building activity), but for simplicity we limit the analysis to their global effect (*i.e.*, using an average value calculated across building sites). The variables studied are: stone density of the wall under construction, number of ants in the central brood cluster and distance of the building site from the cluster.
+
+This document contains the selection procedure used to identify the best fitting statistical models. 
+
+## Model selection approach
+
+The predictors used in the analysis are either derived from the existing literature (stone density and distance of the building area from the _centre_ of the brood cluster) or influence the others through the experimental setting (the number of ants in the brood cluster influences the total area of the cluster and consequently the distance of the building area to the _edge_ of the cluster). We fit single predictor and the three-predictor models and an interaction model that includes the interaction of distance with the n of ants in the cluster. We compare model fit through AIC. 
+
+```{r pathToModels.D, echo=FALSE, warning=FALSE, message=FALSE}
+
+modelPath <- "C:/Users/FastRun/OneDrive - University of St Andrews/Projects/Experimental/Building_data_analysis/statistical models/full time series/D/overall effect/"
+
+niter <- 100
+
+```
+
+The fitting of each model is iterated over `r niter` different sets of starting values for the distributions, to check whether the MLE algorithm is reliably converging to the same minimum negative log likelihood (NLL) solution. Lack of convergence indicates numerical instability, which is a symptom of the amount of data being insufficient to fit the model accurately. Here, we use a 50% convergence threshold: if at least half of the iterations have converged to the same best fit, we accept that best convergence point. In case of lack of convergence, we exclude the model from the analysis entirely.
+
+``` {r libs, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(momentuHMM)
+
+```
+
+## Analysis of deposition activity
+
+#### Covariate-free model
+
+Let us first extract all `r niter` model fits of the no-covariate model, run from `r niter`different sets of parameter starting values. We look at their NLL to evaluate the reliability of model convergence.
+
+```{r noCovModel.D, echo=T, warning=FALSE, message=FALSE}
+
+# Load model and plot residuals
+fn <- paste0(modelPath, "allm_0.rds")  # load fitted models from rds file
+allm.D.0 <- readRDS(fn)  [1:niter]     # the first 100 objects contain the models (the remaining 100 are the corresponding sets of starting values)
+
+# extract all min neg log likelihood values
+allnllk.D.0 <- unlist(lapply(allm.D.0, function(m) m$mod$minimum))
+allnllk.D.0
+
+```
+
+We now count how many iterations converged to the same minimum NLL estimate (with some buffer) out of `r niter`. 
+``` {r noCovModel.stabilityD, echo=TRUE, warning=FALSE, message=FALSE}
+minnll.D.0 <- min(allnllk.D.0)
+length(which( allnllk.D.0 < minnll.D.0 + 1 & allnllk.D.0 > minnll.D.0 - 1 )) # allow fits that are within +-1 NLL to be considered the same model
+
+```
+
+90% of iterations converged to the same best fit. This is more than enough to think that the algorithm has identified the global best fit for the model. We now look at its residual plots.
+
+``` {r noCovModel.bestD, echo=FALSE, warning=FALSE, message=FALSE}
+# identify best model
+best_model.D.0 <- allm.D.0[which.min(allnllk.D.0)] [[1]]
+
+plotPR(best_model.D.0)
+
+```
+
+Pseudo-residuals are randomly distributed and so are autocorrelation values. The quantiles respect the normality assumption. This is a healthy model.
+
+We now do the same for the other models.
+
+
+#### stone density + distance * n ants
+```{r nd.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_s-nd.rds")
+allm.D.nd <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.nd <- unlist(lapply(allm.D.nd, function(m) m$mod$minimum))
+
+allnllk.D.nd
+
+```
+``` {r nd.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.nd <- min(allnllk.D.nd)
+length(which( allnllk.D.nd < minnll.D.nd + 1 & allnllk.D.nd > minnll.D.nd - 1 ))
+
+```
+
+```{r nd.bestD, echo=FALSE, warning=FALSE, message=FALSE}
+
+# identify best model
+best_model.D.nd <- allm.D.nd[which.min(allnllk.D.nd)][[1]]
+
+plotPR(best_model.D.nd)
+
+```
+
+
+#### stone density
+```{r s.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_s.rds")
+allm.D.s <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.s <- unlist(lapply(allm.D.s, function(m) m$mod$minimum))
+
+allnllk.D.s
+
+```
+
+``` {r s.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.s <- min(allnllk.D.s)
+length(which( allnllk.D.s < minnll.D.s + 1 & allnllk.D.s > minnll.D.s - 1 ))
+
+```
+
+```{r s.bestD, echo=FALSE, warning=FALSE, message=FALSE}
+
+# identify best model
+best_model.D.s <- allm.D.s[which.min(allnllk.D.s)][[1]]
+
+plotPR(best_model.D.s)
+
+```
+
+
+#### stone density + stone density^2
+```{r s.s2.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_s-s2.rds")
+allm.D.s.s2 <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.s.s2 <- unlist(lapply(allm.D.s.s2, function(m) m$mod$minimum))
+
+allnllk.D.s.s2
+
+```
+
+``` {r s.s2.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.s.s2 <- min(allnllk.D.s.s2)
+length(which( allnllk.D.s.s2 < minnll.D.s.s2 + 1 & allnllk.D.s.s2 > minnll.D.s.s2 - 1 ))
+
+```
+
+#### distance
+
+```{r d.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_d.rds")
+allm.D.d <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.d <- unlist(lapply(allm.D.d, function(m) m$mod$minimum))
+
+allnllk.D.d
+
+```
+
+``` {r d.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.d <- min(allnllk.D.d)
+length(which( allnllk.D.d < minnll.D.d + 1 & allnllk.D.d > minnll.D.d - 1 ))
+
+```
+
+#### n of ants
+```{r n.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_n.rds")
+allm.D.n <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.n <- unlist(lapply(allm.D.n, function(m) m$mod$minimum))
+
+allnllk.D.n
+
+```
+
+``` {r n.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.n <- min(allnllk.D.n)
+length(which( allnllk.D.n < minnll.D.n + 1 & allnllk.D.n > minnll.D.n - 1 ))
+
+```
+
+#### stone density + n ants + distance
+```{r n.d.s.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_s-n-d.rds")
+allm.D.n.d.s <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.n.d.s <- unlist(lapply(allm.D.n.d.s, function(m) m$mod$minimum))
+
+allnllk.D.n.d.s
+
+```
+
+``` {r n.d.s.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.n.d.s <- min(allnllk.D.n.d.s)
+length(which( allnllk.D.n.d.s < minnll.D.n.d.s + 1 & allnllk.D.n.d.s > minnll.D.n.d.s - 1 ))
+
+```
+
+```{r n.d.s.bestD, echo=FALSE, warning=FALSE, message=FALSE}
+
+# identify best model
+best_model.D.n.d.s <- allm.D.n.d.s[which.min(allnllk.D.n.d.s)][[1]]
+
+plotPR(best_model.D.n.d.s)
+
+```
+
+#### stone density + stone density^2 + n ants + distance
+```{r n.d.s.s2.D, echo=F, warning=FALSE, message=FALSE}
+
+fn <- paste0(modelPath, "allm_s-n-d-s2.rds")
+allm.D.n.d.s.s2 <- readRDS(fn) [1:niter]
+
+# extract all min neg log likelihood values
+allnllk.D.n.d.s.s2 <- unlist(lapply(allm.D.n.d.s.s2, function(m) m$mod$minimum))
+
+allnllk.D.n.d.s.s2
+
+```
+
+``` {r n.d.s.s2.stabilityD, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.D.n.d.s.s2 <- min(allnllk.D.n.d.s.s2)
+length(which( allnllk.D.n.d.s.s2 < minnll.D.n.d.s.s2 + 1 & allnllk.D.n.d.s.s2 > minnll.D.n.d.s.s2 - 1 ))
+
+```
+```{r n.s.s2.bestD, echo=FALSE, warning=FALSE, message=FALSE}
+
+# identify best model
+best_model.D.n.d.s.s2 <- allm.D.n.d.s.s2[which.min(allnllk.D.n.d.s.s2)][[1]]
+
+plotPR(best_model.D.n.d.s.s2)
+
+```
+
+
+We now compare all suitable models, excluding the models that did not converge. We can use Akaike's Information Criterion (AIC) since:
+
+1. priors are flat (frequentist approach)
+2. we can assume model parameters to have a multivariate gaussian distribution
+3. N >> k (where N is sample size and k is the number of parameters in each model).
+
+```{r AIC.D, echo=TRUE, warning=FALSE, message=FALSE}
+
+AIC(best_model.D.0, best_model.D.nd, best_model.D.s, best_model.D.n.d.s, best_model.D.n.d.s.s2)
+
+```
+
+The n model with the squared term and including n ants displays the best weighted fit. Let us have a look at the effect estimates and at the event probability distribution estimate.
+
+#### Stone density + stone density^2 + n ants + distance
+
+``` {r best.d.D, echo=FALSE, warning=FALSE, message=FALSE}
+
+plot(best_model.D.n.d.s.s2, plotCI = T)
+best_model.D.n.d.s.s2
+
+```
+
+
+### Check model predictions
+
+```{r plotLib, echo=FALSE, warning=FALSE, message=FALSE}
+
+library(ggplot2)
+library(cowplot)
+
+```
+
+Let's predict the activity patterns of 4 new colonies based on our best model.
+
+#### stone density + stone density^2 + n ants + distance
+
+```{r D.n.d.s.s2.pred, echo=FALSE, warning=FALSE, message=FALSE}
+
+nSim <- 4
+sim.dt <- simData(nbAnimals = nSim, nbStates = 2, model = best_model.D.n.d.s.s2 ,obsPerAnimal = c(17,40), states = T)
+
+par(mfrow = c(2,2))
+pal <- c("firebrick", "seagreen")
+
+for (id in unique(sim.dt$ID)) {
+  if (id == 1){
+    colony <- which(sim.dt$ID == id)
+    plot(sim.dt$D[colony], type = 'h',xlab = "Time since start of activity", ylab = "Deposition rate", col = pal[sim.dt$states[colony]], main = id, ylim = c(0,4), xlim = c(0,40))
+  }
+  
+  else {
+    
+    colony <- which(sim.dt$ID == id)
+    plot(sim.dt$D[colony], type = 'h', xlab = "", ylab = "", col = pal[sim.dt$states[colony]], main = id, ylim = c(0,4), xlim = c(0,40))
+    
+  }
+}
+
+```
+
+and compare with real data.
+
+```{r colActivity.plot, echo=FALSE, warning=FALSE, message=FALSE}
+
+raw <- read.csv("rates.csv")
+raw_ordered <- raw[with(raw, order(ID, timepoints)),]
+raw_cols <- raw_ordered[, c("ID", "D", "P", "stone_dens", "distance", "n_ants")]
+
+rates.dt <- prepData(raw_cols, coordNames = NULL, 
+                 covNames = c("stone_dens", "distance", "n_ants"))
+
+s <- viterbi(best_model.D.n.d.s.s2)
+
+par(mfrow = c(2,2))
+pal <- c("darkorange", "deepskyblue")
+
+area_subset <- sample(unique(rates.dt$ID),4)
+sample_indx <- rates.dt$ID %in% area_subset
+plot_subset <- rates.dt[sample_indx,]
+s_subset <- s[sample_indx]
+for (id in unique(plot_subset$ID)) {
+  area <- which(plot_subset$ID == id)
+  nt <- length(area)
+  if (id == unique(plot_subset$ID[1])) {
+    plot(plot_subset[area, "D"], type = 'h', xaxt = 'n', xlab = "time since start of activity (min)", ylab = "depositions/min", col = pal[s_subset[area]], main = id, ylim = c(0,4))
+    axis(side = 1, at = plot_subset[area, "timepoints"], labels = F) +
+    text(seq(0,nt,by=5), par("usr")[3] - 0.8, labels = as.vector(seq(0,nt*15,15*5)), srt = 90, pos = 1, xpd = T)
+    legend("topright", legend = c("low activity", "high activity"), col = c("darkorange", "deepskyblue"), lty = 1, bty = 'n')
+  } else {
+   plot(plot_subset[area, "D"], type = 'h', xaxt = 'n', xlab = " ", ylab = " ", col = pal[s_subset[area]], main = id, ylim = c(0,4)) +
+    axis(side = 1, at = plot_subset[area, "timepoints"], labels = F) +
+    text(seq(0,nt,by=5), par("usr")[3] - 0.8, labels = as.vector(seq(0,nt*15,15*5)), srt = 90, pos = 1, xpd = T)
+  }
+  
+}
+
+```
+
+The predictions show a good match between the activity state and the deposition rate - even if some intervals with high rate are classified as low activity.
+
+Let's now plot the predictions made by this model over the predictors, to check for unusual patterns that might indicate issues. 
+
+### Activity over stone density
+
+```{r simulated-data, echo=FALSE, warning=FALSE, message=FALSE}
+obsn <- c(25,40)
+nSim <- 4
+sim.dt <- simData(nbAnimals = nSim, nbStates = 2, model = best_model.D.n.d.s.s2 ,obsPerAnimal = obsn, states = T)
+
+```
+
+```{r activity-over-stone-dens, echo=FALSE, warning=FALSE, message=FALSE}
+
+par(mfrow = c(1,1))
+
+## real data
+plot(y = rates.dt[, "D"], x = rates.dt[, "stone_dens"], type = 'p', pch = 1, ylab = "deposition rate", xlab = "stone density", main = "stone density - predicted vs real rate", ylim = c(0,4), xlim = c(0,1))
+## four-predictor model
+points(y = sim.dt[, "D"], x = sim.dt[, "stone_dens"], col = 'red')
+legend('topright', legend = c("real", "predicted"), col = c('black', 'red'), pch = 1, bty = 'n')
+
+```
+
+The model overestimates deposition rate at very low stone density values and generally seems to tend towards intermediate deposition rates. 
+
+### Activity over distance
+
+```{r activity-over-distance, echo=FALSE, warning=FALSE, message=FALSE}
+
+par(mfrow = c(1,1))
+
+## real data
+plot(y = rates.dt[, "D"], x = rates.dt[, "distance"], type = 'p', pch = 1, ylab = "deposition rate", xlab = "distance", main = "distance - predicted vs real rate", ylim = c(0,4), xlim = c(20,38))
+## four-predictor model
+points(y = sim.dt[, "D"], x = sim.dt[, "distance"], col = 'red')
+legend('topright', legend = c("real", "predicted"), col = c('black', 'red'), pch = 1, bty = 'n')
+
+```
+
+Not so good for high distance values, but otherwise pretty good.
+
+### Activity over n of ants in cluster
+
+```{r activity-over-n-ants, echo=FALSE, warning=FALSE, message=FALSE}
+
+par(mfrow = c(1,1))
+
+## real data
+plot(y = rates.dt[, "D"], x = rates.dt[, "n_ants"], type = 'p', pch = 1, ylab = "deposition rate", xlab = "n ants", main = "n ants - predicted vs real rate", ylim = c(0,4), xlim = c(-3,2.5))
+## four-predictor model
+points(y = sim.dt[, "D"], x = sim.dt[, "n_ants"], col = 'red')
+legend('topright', legend = c("real", "predicted"), col = c('black', 'red'), pch = 1, bty = 'n')
+
+```
+
+Seems to be a good fit.
+
+\  
+
+Based on current models of cyclic behaviour in ants, worker interactions might underlie the activity cycles. Interactions become more likely as n of ants in the colony increases. Because change in n of workers engaged in building or otherwise in the building area is inversely proportional to the change in n of ants in the brood cluster, we can use this latter variable to check the effect on transition probabilities. Let's fit a model where transition probabilities between states depend on n of ants in the brood cluster.
+
+### Effect of n of ants on probability of transition between states
+```{r mtrans.D, echo=T, warning=FALSE, message=FALSE}
+
+# Load model and plot residuals
+fn <- paste0(modelPath, "allm_trans_n.rds")  # load fitted models from rds file
+allm.trans.n <- readRDS(fn)  [1:niter]     # the first 25 objects contain the models (the remaining 25 are the corresponding sets of starting values)
+
+# extract all min neg log likelihood values
+allnllk.trans.n <- unlist(lapply(allm.trans.n, function(m) m$mod$minimum))
+allnllk.trans.n
+
+```
+
+``` {r mtrans.n.stability.D, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.trans.n <- min(allnllk.trans.n)
+length(which( allnllk.trans.n < minnll.trans.n + 1 & allnllk.trans.n > minnll.trans.n - 1 ))
+
+```
+
+```{r mtrans.n.stability.best.D}
+
+best_model.trans.n <- allm.trans.n[which.min(allnllk.trans.n)][[1]]
+plotPR(best_model.trans.n)
+
+```
+
+``` {r  mtrans.n.best, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot state probabilities as functions of covariate
+par(mfrow=c(1,1))
+plotStationary(best_model.trans.n, plotCI = TRUE)
+plot(best_model.trans.n, plotCI = T)
+
+best_model.trans.n
+
+```
+Colonies that are active are more likely to stay active when there are more ants in the central brood cluster, contrary to predictions.
+
+### Effect of stone density on probability of transition between states
+
+Because in the F&D model deposition probability is affected by local stone density, we check whether stone density also affects transition between states.
+
+```{r mtrans.s.D, echo=T, warning=FALSE, message=FALSE}
+
+# Load model and plot residuals
+fn <- paste0(modelPath, "allm_trans_s.rds")  # load fitted models from rds file
+allm.trans.s <- readRDS(fn)  [1:niter]     # the first 25 objects contain the models (the remaining 25 are the corresponding sets of starting values)
+
+# extract all min neg log likelihood values
+allnllk.trans.s <- unlist(lapply(allm.trans.s, function(m) m$mod$minimum))
+allnllk.trans.s
+
+```
+
+``` {r mtrans.s.stability.D, echo=FALSE, warning=FALSE, message=FALSE}
+minnll.trans.s <- min(allnllk.trans.s)
+length(which( allnllk.trans.s < minnll.trans.s + 1 & allnllk.trans.s > minnll.trans.s - 1 ))
+
+```
+
+```{r mtrans.s.stability.best.D}
+
+best_model.trans.s <- allm.trans.s[which.min(allnllk.trans.s)][[1]]
+plotPR(best_model.trans.s)
+
+```
+
+``` {r  mtrans.s.best, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Plot state probabilities as functions of covariate
+par(mfrow=c(1,1))
+plotStationary(best_model.trans.s, plotCI = TRUE)
+plot(best_model.trans.s, plotCI = T)
+
+best_model.trans.s
+
+```
+
+Colonies that are active are very likely to remain active at intermediate values of stone density - but not at extreme ones. At very low stone density, inactive colonies are unlikely to become active until stone density has increased.
