@@ -12,7 +12,7 @@ Below you will find a description of the files.
   `analyseData.R`: script used for data processing  (combines data files, calculates derived measures, _etc._)
     
     
- ### HMM analysis  
+ ### HMM analysis and model selection   
  `best_starting_values_HMMs.R`: fits HMM models over 100 iterations with different starting values, to find the global minimum (_i.e._, the maximum of the likelihood function). Uses the `momentuHMM` package.  
   
  `Activity analysis - overall variables - best model selection.rmd` and homonymous pdf file:  describes the model selection process
