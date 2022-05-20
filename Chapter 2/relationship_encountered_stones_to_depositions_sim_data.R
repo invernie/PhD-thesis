@@ -4,7 +4,7 @@ set.seed(0)
 
 s0 <- 50  # n of stones being carried at time 0
 p <- 0.05 # prob of encountering a stone
-d <- 0.046 # prob of deposition
+d <- 0.03 # prob of deposition
 
 niter <- 100
 rsqv <- rep(0,niter)  # vector of r squared of the linear models
